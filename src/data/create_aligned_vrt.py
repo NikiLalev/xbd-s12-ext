@@ -22,7 +22,7 @@ from rasterio.crs import CRS
 from rasterio.transform import from_bounds
 from tqdm import tqdm
 
-from src.constants import XBD_S12_PATH
+from src.constants import FLOOD_DISASTERS, XBD_S12_PATH
 from src.data.metadata import load_metadata
 from src.utils.geometry import reproject_geo
 from src.utils.time import timeit
@@ -84,7 +84,7 @@ def process_single_uid(row: dict[str, Any], original_folder: Path, output_folder
 
 
 @timeit
-def create_all_aligned_vrt_files(original_folder: Path, overwrite: bool = False, num_workers: int = 8) -> None:
+def create_all_aligned_vrt_files(original_folder: Path, overwrite: bool = False, num_workers: int = 8, only_floods: bool = False) -> None:
     """
     Orchestrates the metadata correction process using multiprocessing.
 
@@ -92,6 +92,7 @@ def create_all_aligned_vrt_files(original_folder: Path, overwrite: bool = False,
         original_folder: Path to the original xBD dataset root.
         overwrite: If True, existing VRT files will be regenerated.
         num_workers: The number of concurrent processes to use.
+        only_floods: If True, only creates VRT files for the 4 flood events.
     """
     assert original_folder.exists(), f"Original xBD folder does not exist: {original_folder}"
 
@@ -99,6 +100,9 @@ def create_all_aligned_vrt_files(original_folder: Path, overwrite: bool = False,
     output_folder.mkdir(exist_ok=True, parents=True)
 
     df_meta = load_metadata()
+    if only_floods:
+        df_meta = df_meta[df_meta["disaster"].isin(FLOOD_DISASTERS)].copy()
+        print(f"Filtering to {len(df_meta)} flood tiles ({FLOOD_DISASTERS}).")
 
     # Global checks to see if all VRT files already exist.
     if not overwrite:
@@ -130,9 +134,10 @@ if __name__ == "__main__":
     parser.add_argument("--original_xbd_path", type=str)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--num_workers", type=int, default=8, help="Number of parallel workers to use")
+    parser.add_argument("--only_floods", action="store_true", help="Only generate VRTs for the 4 flood events")
     args = parser.parse_args()
 
     original_xbd_folder = Path(args.original_xbd_path)
     assert original_xbd_folder.exists(), f"Original xBD folder does not exist: {original_xbd_folder}"
 
-    create_all_aligned_vrt_files(original_xbd_folder, overwrite=args.overwrite, num_workers=args.num_workers)
+    create_all_aligned_vrt_files(original_xbd_folder, overwrite=args.overwrite, num_workers=args.num_workers, only_floods=args.only_floods)

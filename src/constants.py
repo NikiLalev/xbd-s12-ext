@@ -42,6 +42,17 @@ TEST_DISASTERS = [
 ]
 ALL_DISASTERS = sorted(TRAIN_DISASTERS + TEST_DISASTERS)
 
+# Event-based split for the 4 flood events (following Hafner et al., 2025: 3 train, 1 test)
+FLOOD_TRAIN_DISASTERS = [
+    "hurricane-florence",
+    "hurricane-harvey",
+    "midwest-flooding",
+]
+FLOOD_TEST_DISASTERS = [
+    "nepal-flooding",
+]
+FLOOD_DISASTERS = sorted(FLOOD_TRAIN_DISASTERS + FLOOD_TEST_DISASTERS)
+
 
 CLASSES = {
     0: "Background",

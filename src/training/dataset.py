@@ -15,7 +15,17 @@ import torchvision
 from sklearn.model_selection import train_test_split
 from torch.utils import data as tdata
 
-from src.constants import ALL_DISASTERS, S1_BANDS, S2_BANDS, TEST_DISASTERS, TRAIN_DISASTERS, XBD_S12_PATH
+from src.constants import (
+    ALL_DISASTERS,
+    FLOOD_TEST_DISASTERS,
+    FLOOD_TRAIN_DISASTERS,
+    PROJECT_PATH,
+    S1_BANDS,
+    S2_BANDS,
+    TEST_DISASTERS,
+    TRAIN_DISASTERS,
+    XBD_S12_PATH,
+)
 from src.training.utils import apply_buffer_around_buildings, downsample_categorical_mask
 from src.visualization import plot_mask
 
@@ -54,7 +64,8 @@ class xBDS12Dataset(tdata.Dataset):
 
         Args:
             split (str): Which split between train, valid or test. Defaults to "train".
-            which_split (str): Which split to use, "xview2" (for original xBD), "event" (from Hafner et al., 2025), or "full" (all disasters).
+            which_split (str): Which split to use, "xview2" (for original xBD), "event" (from Hafner et al., 2025),
+                "flood_event" (event-based split filtered to the 4 flood disasters: 3 train, 1 test), or "full" (all disasters).
                 Note: which_split=full expects the split to be either 'train' or 'valid', not 'test'. Defaults to "event".
             modalities (list): Which modalities to include, must be a subset of self.MODALITIES. Defaults to ["s1", "s2"].
             disasters (str | list | None): Which disasters to include, must be a subset of ALL_DISASTERS. If None, all disasters are included.
@@ -91,7 +102,7 @@ class xBDS12Dataset(tdata.Dataset):
 
         # Check input
         assert split in ["train", "valid", "test"], f"Invalid split {split}"
-        assert which_split in ["xview2", "event", "full"], f"Invalid which_split {which_split}"
+        assert which_split in ["xview2", "event", "flood_event", "full"], f"Invalid which_split {which_split}"
         if which_split == "full":
             assert split in ["train", "valid"], "which_split=full does not support split=test"
         modalities = ["s1", "s2"] if modalities is None else modalities
@@ -387,6 +398,11 @@ class xBDS12Dataset(tdata.Dataset):
         elif self.which_split == "event":
             meta.loc[meta.disaster.isin(TRAIN_DISASTERS), "split"] = "train"
             meta.loc[meta.disaster.isin(TEST_DISASTERS), "split"] = "test"
+        elif self.which_split == "flood_event":
+            # Event-based split from Hafner et al. (2025) filtered to the 4 flood disasters (3 train, 1 test)
+            meta["split"] = "exclude"
+            meta.loc[meta.disaster.isin(FLOOD_TRAIN_DISASTERS), "split"] = "train"
+            meta.loc[meta.disaster.isin(FLOOD_TEST_DISASTERS), "split"] = "test"
         else:
             # full dataset in train split, we can later separate train and valid based on fraction_valid
             meta["split"] = "train"
