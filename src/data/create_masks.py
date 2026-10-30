@@ -16,7 +16,7 @@ import rioxarray as rxr
 from shapely.wkt import loads as wkt_loads
 from tqdm import tqdm
 
-from src.constants import XBD_S12_PATH
+from src.constants import FLOOD_DISASTERS, XBD_S12_PATH
 from src.data.metadata import load_metadata
 from src.utils.time import timeit
 
@@ -31,7 +31,7 @@ DAMAGE_DICT = {
 
 
 @timeit
-def create_all_masks(original_folder: Path, overwrite: bool = False, nodata_value: int = 6) -> None:
+def create_all_masks(original_folder: Path, overwrite: bool = False, nodata_value: int = 6, only_floods: bool = False) -> None:
     """
     Orchestrates the creation of raster masks for all entries in the metadata.
 
@@ -45,6 +45,9 @@ def create_all_masks(original_folder: Path, overwrite: bool = False, nodata_valu
     folder = XBD_S12_PATH / "masks"
     folder.mkdir(exist_ok=True, parents=True)
     df_meta = load_metadata()
+    if only_floods:
+        df_meta = df_meta[df_meta["disaster"].isin(FLOOD_DISASTERS)].copy()
+        print(f"Filtering to {len(df_meta)} flood tiles ({FLOOD_DISASTERS}).")
     if not overwrite:
         all_exists = all([(folder / f"{uid}_mask.tif").exists() for uid in df_meta.index])
         if all_exists:
@@ -146,9 +149,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--original_xbd_path", type=str)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--only_floods", action="store_true", help="Only generate masks for the 4 flood events")
     args = parser.parse_args()
 
     original_xbd_folder = Path(args.original_xbd_path)
     assert original_xbd_folder.exists(), f"Original xBD folder does not exist: {original_xbd_folder}"
 
-    create_all_masks(original_xbd_folder, overwrite=args.overwrite)
+    create_all_masks(original_xbd_folder, overwrite=args.overwrite, only_floods=args.only_floods)
